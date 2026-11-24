@@ -496,15 +496,17 @@ module's log, `var/log/sattleme_payment.log`, says it too, without the key.
 
 The module's sources are the repository's root (as Composer installs a Magento module);
 `Test/` holds its tests, `tools/` its tools, `sdk/` the pinned SDK: none of them is in the
-package (`.gitattributes` keeps them out of the git archive Packagist distributes). The package
-holds `Block/`, `Console/`, `Controller/`, `Cron/`, `Embedded/`, `Gateway/`, `Model/`,
-`Observer/`, `Plugin/`, `Sdk/`, `ViewModel/`, `etc/`, `i18n/` and `view/`, `composer.json`,
-`registration.php`, `LICENSE`, `README.md`, `CHANGELOG.md` and `SECURITY.md`, and, in `vendor/`,
-the libraries it embeds (below), each with its licence: `vendor/sattleme/checkout/`,
-`vendor/bacon/bacon-qr-code/` and `vendor/dasprid/enum/`. Git tracks `vendor/` as
-`tools/embed.php` builds it: Composer installs the package from a tag's git archive, which must
-hold them. `php tools/embed.php vendor` builds them, checks them (below) and writes `vendor/`;
-commit it after any change of `tools/embed/composer.lock` or `sdk/`.
+package. The package holds `Block/`, `Console/`, `Controller/`, `Cron/`, `Embedded/`, `Gateway/`,
+`Model/`, `Observer/`, `Plugin/`, `Sdk/`, `ViewModel/`, `etc/`, `i18n/` and `view/`,
+`composer.json`, `registration.php`, `LICENSE`, `README.md`, `CHANGELOG.md` and `SECURITY.md`,
+and, in `vendor/`, the libraries it embeds (below), each with its licence:
+`vendor/sattleme/checkout/`, `vendor/bacon/bacon-qr-code/` and `vendor/dasprid/enum/`.
+
+Composer installs the package from a tag's git archive, which Packagist distributes:
+`.gitattributes` keeps the tests, the tools, the pinned SDK and the CI out of it, and git tracks
+`vendor/` as `tools/embed.php` builds it. `php tools/embed.php vendor` builds the embedded
+libraries, checks them (below) and writes `vendor/`; commit it after any change of
+`tools/embed/composer.lock` or `sdk/`.
 
 - **The coding standard and PHPStan**, from `tools/dev/composer.lock`
   (`composer install --working-dir=tools/dev`): `tools/dev/vendor/bin/phpcs` runs Magento's coding
