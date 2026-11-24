@@ -1,12 +1,11 @@
 name: Release
 
-# A maintainer pushes a tag vX.Y.Z on a commit of main (never a development or agent session).
-# This workflow runs the CI again, checks the tag (vX.Y.Z, the version of composer.json and
-# CHANGELOG.md, a commit of main), and builds the package Adobe Commerce Marketplace takes (the
-# module's ZIP, composer.json at its root), checks it as the Marketplace's technical review
-# checks it, and keeps it as the workflow's artifact: a maintainer submits it in the Marketplace's
-# Developer Portal. The Marketplace has no channel without a stored secret (its EQP API takes an
-# API key): nothing is published from here, and no GitHub release is made. See README.md,
+# A maintainer pushes a tag vX.Y.Z on a commit of main whose CI passed (never a development or
+# agent session). Packagist reads the tag at once, through its GitHub hook: Composer then installs
+# the tag's git archive, which .gitattributes trims to the module and the libraries it embeds
+# (vendor/). This workflow runs the CI again and checks the tag (vX.Y.Z, the version of
+# composer.json and CHANGELOG.md, a commit of main) and the package of that version: nothing is
+# published from here, no secret is used, and no GitHub release is made. See README.md,
 # "Releases".
 on:
   push:
@@ -25,7 +24,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   package:
-    name: Check the tag and build the package
+    name: Check the tag and the package
     needs: ci
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -71,11 +70,3 @@ jobs:
           TAG: ${{ github.ref_name }}
           COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
         run: php tools/build.php build "${TAG#v}"
-      - name: The package's checksum
-        run: sha256sum build/dist/sattleme-module-payment-*.zip
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: marketplace-package
-          path: build/dist/sattleme-module-payment-*.zip
-          if-no-files-found: error
-          retention-days: 90

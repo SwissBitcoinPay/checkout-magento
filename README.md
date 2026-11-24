@@ -84,9 +84,8 @@ link (no new invoice then).
 
 ## Installation
 
-The module is distributed on [Adobe Commerce Marketplace](https://commercemarketplace.adobe.com/)
-only. Once it is in your Marketplace account, with your access keys for `repo.magento.com` set in
-Composer, from Magento's root:
+The module is distributed on [Packagist](https://packagist.org/packages/sattleme/module-payment)
+(`sattleme/module-payment`), which Composer reads by default. From Magento's root:
 
 ```shell
 composer require sattleme/module-payment
@@ -101,14 +100,6 @@ The package holds the libraries the module uses (the SDK, a QR code encoder), un
 own (see [Development](#development), Dependencies): Composer installs nothing else with it, and
 another module's or Magento's own copies of them never interfere. To update the module: `composer
 update sattleme/module-payment`, then the same `bin/magento` commands from `setup:upgrade`.
-
-From the Marketplace's package itself (its ZIP, `composer.json` at its root), put it in a
-directory of the server and tell Composer about it, then the same commands:
-
-```shell
-composer config repositories.sattleme artifact /path/to/the/directory/of/the/zip
-composer require sattleme/module-payment:1.0.0
-```
 
 ### Uninstalling
 
@@ -505,11 +496,15 @@ module's log, `var/log/sattleme_payment.log`, says it too, without the key.
 
 The module's sources are the repository's root (as Composer installs a Magento module);
 `Test/` holds its tests, `tools/` its tools, `sdk/` the pinned SDK: none of them is in the
-package. The package holds `Block/`, `Console/`, `Controller/`, `Cron/`, `Embedded/`, `Gateway/`,
-`Model/`, `Observer/`, `Plugin/`, `Sdk/`, `ViewModel/`, `etc/`, `i18n/` and `view/`,
-`composer.json`, `registration.php`, `LICENSE`, `README.md`, `CHANGELOG.md` and `SECURITY.md`,
-and, in `vendor/`, the libraries it embeds (below), each with its licence:
-`vendor/sattleme/checkout/`, `vendor/bacon/bacon-qr-code/` and `vendor/dasprid/enum/`.
+package (`.gitattributes` keeps them out of the git archive Packagist distributes). The package
+holds `Block/`, `Console/`, `Controller/`, `Cron/`, `Embedded/`, `Gateway/`, `Model/`,
+`Observer/`, `Plugin/`, `Sdk/`, `ViewModel/`, `etc/`, `i18n/` and `view/`, `composer.json`,
+`registration.php`, `LICENSE`, `README.md`, `CHANGELOG.md` and `SECURITY.md`, and, in `vendor/`,
+the libraries it embeds (below), each with its licence: `vendor/sattleme/checkout/`,
+`vendor/bacon/bacon-qr-code/` and `vendor/dasprid/enum/`. Git tracks `vendor/` as
+`tools/embed.php` builds it: Composer installs the package from a tag's git archive, which must
+hold them. `php tools/embed.php vendor` builds them, checks them (below) and writes `vendor/`;
+commit it after any change of `tools/embed/composer.lock` or `sdk/`.
 
 - **The coding standard and PHPStan**, from `tools/dev/composer.lock`
   (`composer install --working-dir=tools/dev`): `tools/dev/vendor/bin/phpcs` runs Magento's coding
@@ -518,20 +513,23 @@ and, in `vendor/`, the libraries it embeds (below), each with its licence:
   PHPStan at its strictest level (`max`, its strict rules, and Magento's extension
   `bitexpert/phpstan-magento`) on the module, its tests and its tools, against that Magento's own
   sources (one prepared as below).
-- **The package**: `php tools/build.php build` (PHP, git, Composer and curl) writes the ZIP the
-  Marketplace takes, `build/dist/sattleme-module-payment-<version>.zip`, from the files git
-  tracks and the embedded libraries it builds (`tools/embed.php`: a clean checkout of a commit
-  gives the same bytes, on any PHP version the module supports), and checks it as the
-  Marketplace's technical review checks a package (its `composer.json`, `etc/module.xml` and
+- **The package**: `php tools/build.php build` (PHP, git, Composer and curl) writes the ZIP of
+  the module, `build/dist/sattleme-module-payment-<version>.zip`, from the files git tracks and
+  the embedded libraries it builds (`tools/embed.php`: a clean checkout of a commit gives the same
+  bytes, on any PHP version the module supports), and fails unless the `vendor/` git tracks is
+  that build, byte for byte. It checks the ZIP as Adobe Commerce Marketplace's technical review
+  checks a package, a bar the package keeps meeting (its `composer.json`, `etc/module.xml` and
   `registration.php`, no to-do marker, nothing but the module, at most 30 MB), and that no code of
   it names the embedded libraries without their prefix. `php tools/embed.php check` then compares
   the embedded libraries with their originals (below). The Marketplace's code sniffer on the
   package: `phpcs --standard=Magento2 --extensions=php,phtml --error-severity=10
-  --ignore-annotations`, which scans the embedded libraries too.
+  --ignore-annotations`, which scans the embedded libraries too. The CI then checks that the ZIP
+  holds exactly the files of the commit's `git archive`, byte for byte: what Composer installs
+  from Packagist is what the tests install.
 - **A Magento to test in**, without Docker nor root: `sh tools/tests/magento.sh prepare <tag> <dir>`
   clones Magento's repository at a release's tag (2.4.7-p10, 2.4.8-p5, 2.4.9), installs its lock,
   and installs the module from the package with Composer, the embedded libraries with it: every
-  test runs on them, as Adobe gets them. After a change, `php tools/build.php build` and
+  test runs on them, as shops get them. After a change, `php tools/build.php build` and
   `sh tools/tests/magento.sh module <dir>` put the new package's files in place.
 - **The unit tests**, in Magento's unit test framework: `sh tools/tests/magento.sh unit <dir>`.
 - **The integration tests**, in Magento's integration test framework, on MariaDB 11.4:
@@ -564,9 +562,10 @@ and, in `vendor/`, the libraries it embeds (below), each with its licence:
   dictionary translates exactly those phrases, with the same placeholders.
 - **Dependencies.** The package requires PHP, its extensions and Magento's modules only (from
   2.4.7), as constraints each shop's Composer resolves. The libraries the module uses are in the
-  package: Adobe Commerce Marketplace installs an extension's dependencies from its own
-  repository, which holds none of them. They are locked exactly in `tools/embed/composer.lock`:
-  the SDK `sattleme/checkout` 1.0.0 (MIT, from `sdk/`), `bacon/bacon-qr-code` 3.1.1 and its
+  package, never Composer dependencies: a version of them required beside the module could
+  conflict with another module's, or with the QR code library Magento's two-factor
+  authentication requires. They are locked exactly in `tools/embed/composer.lock`: the SDK
+  `sattleme/checkout` 1.0.0 (MIT, from `sdk/`), `bacon/bacon-qr-code` 3.1.1 and its
   `dasprid/enum` 1.0.7 (both BSD-2-Clause). `tools/embed.php` prefixes them with
   `Sattleme\Payment\Vendor` (PHP-Scoper 0.18.20, its signed PHAR checked against
   its SHA-256), so that no other copy of them (another module's, or the QR library Magento's
@@ -578,7 +577,9 @@ and, in `vendor/`, the libraries it embeds (below), each with its licence:
   has the same syntax tree): nothing differs but the prefix, PHP's own constants written with a
   leading `\`, and those patches where they are bound; and its QR code encoder draws the same
   codes as the locked one. Dependabot proposes the QR library's updates (`tools/embed`), the
-  development tools' (`tools/dev/composer.lock`) and the actions', after a week.
+  development tools' (`tools/dev/composer.lock`) and the actions', after a week; a pull request
+  of the QR library fails the CI until `php tools/embed.php vendor` is run on its branch and
+  `vendor/` committed, so that the code the package ships is in its diff.
 - **The pinned SDK.** `sdk/` holds the SDK's own files at a commit of
   [checkout-php](https://github.com/sattleme/checkout-php), unchanged, with the test vectors of its
   repository that need no network (prices in a currency, integration keys, BIP-340, NIP-44), and
@@ -591,9 +592,10 @@ and, in `vendor/`, the libraries it embeds (below), each with its licence:
      `tools/embed/composer.json`;
   2. `composer update sattleme/checkout --working-dir=tools/embed`, with the Composer the CI uses
      (2.11.2), locks it;
-  3. `php tools/build.php build` and `php tools/embed.php check`: the build fails when the new
+  3. `php tools/embed.php vendor`, then `php tools/build.php build`: the build fails when the new
      version has code a patch was not proven for (an `@`, an `ArrayObject` elsewhere, an
      assertion that does more than read), which is then proven again, or changed in the SDK;
+     commit `vendor/` with the rest;
   4. then the coding standard, PHPStan and the tests. The module uses the SDK's public API alone
      (`Test/Unit/Sdk/PricesTest.php` checks it): its currencies through
      `Client::currencyDigits()`.
@@ -613,7 +615,9 @@ If PHPCS finds any errors, the extension … is rejected"*, its
 page), and annotations are ignored: the libraries the package embeds hold code that four of its
 rules, each an error of severity 10 in `magento/magento-coding-standard`'s ruleset, refuse. The
 build (`tools/embed.php`) changes exactly that code, and fails on any new occurrence a patch was
-not proven for; `php tools/embed.php check` compares every other token with the originals.
+not proven for; `php tools/embed.php check` compares every other token with the originals. The
+package is distributed on Packagist, not on the Marketplace, but it keeps meeting the
+Marketplace's bar (the CI runs its code sniffer on it).
 
 | Rule (severity 10)                    | What it refuses                     | Where, at 1.0.0                                                                  | The patch                                                                                   | Why nothing the code does changes                                                                                                                                                                                                                                                                                       |
 | ------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -634,20 +638,18 @@ alone).
 ## Releases
 
 Releases are the maintainers' only: a maintainer pushes a tag `vX.Y.Z` (the version of
-`composer.json` and of `CHANGELOG.md`) on a commit of `main`;
+`composer.json` and of `CHANGELOG.md`) on a commit of `main` whose CI passed. **Distribution** is
+on [Packagist](https://packagist.org/packages/sattleme/module-payment) only: Packagist reads the
+tag through its GitHub hook, and Composer then installs the tag's git archive (the module and
+`vendor/`, as `.gitattributes` trims it). No GitHub release is made, no secret is stored, and a
+version Packagist published cannot be changed: a fix is a new version.
 [`release.yml`](https://github.com/sattleme/checkout-magento/blob/main/.github/workflows/release.yml)
-runs the CI again, checks the tag, builds the package and checks it, and keeps it as the
-workflow's artifact (`marketplace-package`, with its SHA-256 in the job's log).
+runs the CI again on the tag and checks it (`vX.Y.Z`, the version of `composer.json` and
+`CHANGELOG.md`, a commit of `main`) and the package of that version.
 
-**Distribution** is on Adobe Commerce Marketplace only: no GitHub release, no other repository. A
-maintainer submits the artifact in the Marketplace's Developer Portal ("Submit a New Version"),
-with its release notes (this version's section of [CHANGELOG.md](CHANGELOG.md)) and the claimed
-Magento versions; the Marketplace's EQP API would need its API key as a stored secret, which this
-repository keeps none of. The package needs no *shared package* of the Marketplace: it holds its
-libraries. The listing names the vendor (the Marketplace's *Vendor Name*
-is the first part of the package's name), a support email, the user guide (PDF), and the security
-contact of [SECURITY.md](SECURITY.md); it says that refunds are made by hand
-([Payments and orders](#payments-and-orders)).
+Packagist follows this repository through its GitHub hook: the package is submitted once on
+packagist.org, from the repository's public URL, by a maintainer signed in to Packagist with
+GitHub, which installs the hook.
 
 ## License
 

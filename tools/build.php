@@ -1,16 +1,18 @@
 <?php
 /**
- * The package Adobe Commerce Marketplace takes: a ZIP of the module, composer.json at its root.
+ * The package: a ZIP of the module, composer.json at its root, holding the files Composer installs
+ * from Packagist (the tag's git archive, which .gitattributes trims: the CI compares the two).
  *
  *   php tools/build.php build [<version>]
  *       Writes build/dist/sattleme-module-payment-<version>.zip of the files git tracks (never an
  *       untracked file), as the working tree holds them: those of the module, without its tests,
  *       tools, pinned SDK and CI; and, in vendor/, the libraries it embeds, prefixed, as
- *       tools/embed.php builds them from tools/embed/composer.lock. A clean checkout of a commit
- *       gives the same bytes (sorted entries, HEAD's date, fixed permissions). With <version> (a
- *       tag's, "1.0.0"), it fails unless composer.json and CHANGELOG.md (## 1.0.0 - <date>) are of
- *       that version. Then
- *       it checks the archive (below).
+ *       tools/embed.php builds them from tools/embed/composer.lock. It fails unless the vendor/ git
+ *       tracks is that build, file for file and byte for byte (`php tools/embed.php vendor` writes
+ *       it). A clean checkout of a commit gives the same bytes (sorted entries, HEAD's date, fixed
+ *       permissions). With <version> (a tag's, "1.0.0"), it fails unless composer.json and
+ *       CHANGELOG.md (## 1.0.0 - <date>) are of that version. Then it checks the archive (below):
+ *       it still meets Adobe Commerce Marketplace's technical review, a bar of its own.
  *   php tools/build.php check <zip>
  *       Whether the archive is what the Marketplace's technical review takes: composer.json
  *       (name, type, version, license, autoload, no extra.map nor magento-root-dir, no source nor
@@ -106,7 +108,9 @@ class Package
         require_once __DIR__ . '/embed.php';
         $embedded = new Embedded($this->root);
         [$libraries] = $embedded->build();
-        foreach ($embedded->filesUnder($libraries . '/' . rtrim(self::EMBEDDED, '/')) as $file) {
+        $built = $embedded->filesUnder($libraries . '/' . rtrim(self::EMBEDDED, '/'));
+        $this->checkTrackedEmbedded($libraries . '/' . self::EMBEDDED, $built);
+        foreach ($built as $file) {
             $files[self::EMBEDDED . $file] = $libraries . '/' . self::EMBEDDED . $file;
         }
         ksort($files, SORT_STRING);
@@ -138,6 +142,36 @@ class Package
         $zip->close();
 
         return $path;
+    }
+
+    /**
+     * Fails unless the libraries git tracks in vendor/ are the build's, byte for byte.
+     *
+     * The build is tools/embed.php's, of tools/embed/composer.lock and sdk/: the package Composer
+     * installs from Packagist (the tag's git archive) holds the copy git tracks.
+     *
+     * @param string $dir The build's vendor/, its trailing "/" included.
+     * @param list<string> $files Its files, relative to it, sorted.
+     * @return void
+     */
+    private function checkTrackedEmbedded(string $dir, array $files): void
+    {
+        $tracked = [];
+        foreach (explode("\0", $this->git(['ls-files', '-z', '--cached', '--', self::EMBEDDED])) as $file) {
+            if ($file !== '') {
+                $tracked[] = substr($file, strlen(self::EMBEDDED));
+            }
+        }
+        sort($tracked, SORT_STRING);
+        $fix = ': run php tools/embed.php vendor, then commit vendor/';
+        if ($tracked !== $files) {
+            throw new \RuntimeException('vendor/ does not track the files of the embedded libraries' . $fix);
+        }
+        foreach ($files as $file) {
+            if ($this->read(self::EMBEDDED . $file) !== file_get_contents($dir . $file)) {
+                throw new \RuntimeException(self::EMBEDDED . "{$file} is not the embedded libraries' build" . $fix);
+            }
+        }
     }
 
     /**
