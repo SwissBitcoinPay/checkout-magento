@@ -1,0 +1,81 @@
+name: Release
+
+# A maintainer pushes a tag vX.Y.Z on a commit of main (never a development or agent session).
+# This workflow runs the CI again, checks the tag (vX.Y.Z, the version of composer.json and
+# CHANGELOG.md, a commit of main), and builds the package Adobe Commerce Marketplace takes (the
+# module's ZIP, composer.json at its root), checks it as the Marketplace's technical review
+# checks it, and keeps it as the workflow's artifact: a maintainer submits it in the Marketplace's
+# Developer Portal. The Marketplace has no channel without a stored secret (its EQP API takes an
+# API key): nothing is published from here, and no GitHub release is made. See README.md,
+# "Releases".
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  package:
+    name: Check the tag and build the package
+    needs: ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PHP_VERSION: 8.4.23
+      PHP_SHA256: bfa838bc924171480fd9b833d9b4241b6fd703a86a30501afa893752c5e79fd9
+      COMPOSER_URL: https://getcomposer.org/download/2.11.2/composer.phar
+      COMPOSER_SHA256: dd158c0afd41d15fac89e1b4e47b5d42911fe316c3687cd5edac98319b25d028
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Every branch's history, to tell whether the tag's commit is on main.
+          fetch-depth: 0
+      - name: The tag is vX.Y.Z on a commit of main
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! echo "$TAG" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+            echo "::error::$TAG is not vX.Y.Z"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main; then
+            echo "::error::The commit of $TAG is not on main"
+            exit 1
+          fi
+      # Composer installs the libraries the package embeds (tools/embed/composer.lock).
+      - name: PHP ${{ env.PHP_VERSION }} and Composer, their checksums checked
+        run: |
+          mkdir -p "$RUNNER_TEMP/php" "$RUNNER_TEMP/composer"
+          curl -fsSL -o "$RUNNER_TEMP/php.tar.gz" "https://dl.static-php.dev/static-php-cli/gnu-bulk/php-$PHP_VERSION-cli-linux-x86_64.tar.gz"
+          echo "$PHP_SHA256  $RUNNER_TEMP/php.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/php.tar.gz" -C "$RUNNER_TEMP/php" php
+          curl -fsSL -o "$RUNNER_TEMP/php/composer" "$COMPOSER_URL"
+          echo "$COMPOSER_SHA256  $RUNNER_TEMP/php/composer" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/php/composer"
+          printf 'zend.assertions=1\nerror_reporting=-1\n' > "$RUNNER_TEMP/php/php.ini"
+          { echo "PHPRC=$RUNNER_TEMP/php"; echo "COMPOSER_HOME=$RUNNER_TEMP/composer"; } >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/php" >> "$GITHUB_PATH"
+      # The version the tag names: composer.json's and CHANGELOG.md's, or no package.
+      - name: The package of ${{ github.ref_name }}, checked
+        env:
+          TAG: ${{ github.ref_name }}
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
+        run: php tools/build.php build "${TAG#v}"
+      - name: The package's checksum
+        run: sha256sum build/dist/sattleme-module-payment-*.zip
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: marketplace-package
+          path: build/dist/sattleme-module-payment-*.zip
+          if-no-files-found: error
+          retention-days: 90

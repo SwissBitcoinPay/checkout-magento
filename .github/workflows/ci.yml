@@ -1,0 +1,233 @@
+name: CI
+
+# Every pull request and every push to main (and the release workflow, before it builds): the
+# pinned SDK, the translations, Magento's coding standard on the repository, the package Adobe
+# Commerce Marketplace takes built (with the libraries it embeds, prefixed, from
+# tools/embed/composer.lock) and checked as its review checks it, and PHPStan against Magento's own
+# sources, on one job; then, for each Magento release line the module supports and each PHP
+# version they support, in a Magento installed from its repository's tag with the module installed
+# from that package: the unit tests, the integration tests (Magento's frameworks), and the
+# end-to-end test (Magento installed, compiled, in production mode, its storefront's pages still
+# cacheable, a customer's order paid through the storefront, the SDK faked by a test-only module),
+# all of them on the embedded libraries. The tests never reach the network: the SDK is faked. And,
+# on each PHP version, the SDK's own test suite (checkout-php's) against the SDK the package ships.
+#
+# PHP is a static build of static-php-cli (dl.static-php.dev, its glibc "gnu-bulk" set of
+# extensions: Magento's setup needs glob()'s GLOB_BRACE, which the musl builds lack), Composer its
+# phar, MariaDB the packages of MariaDB's repository extracted without root (tools/tests/mariadb.sh),
+# each checked against its SHA-256; the storefront is PHP's built-in server. The end-to-end test
+# runs once more in Docker containers (tools/tests/e2e-docker.sh): MariaDB's and Ubuntu's official
+# images. A pull request from a fork never runs the tests (the checks' `if`: the tests need the
+# checks).
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  COMPOSER_URL: https://getcomposer.org/download/2.11.2/composer.phar
+  COMPOSER_SHA256: dd158c0afd41d15fac89e1b4e47b5d42911fe316c3687cd5edac98319b25d028
+
+jobs:
+  checks:
+    name: Coding standard, static analysis, the package
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      PHP_VERSION: 8.4.23
+      PHP_SHA256: bfa838bc924171480fd9b833d9b4241b6fd703a86a30501afa893752c5e79fd9
+      # The Magento PHPStan reads: the newest release line supported.
+      MAGENTO: "2.4.9"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # PHP and Composer in RUNNER_TEMP, PHP's ini there too (PHPRC), Composer's home as well.
+      - name: PHP ${{ env.PHP_VERSION }} and Composer, their checksums checked
+        run: |
+          mkdir -p "$RUNNER_TEMP/php" "$RUNNER_TEMP/composer"
+          curl -fsSL -o "$RUNNER_TEMP/php.tar.gz" "https://dl.static-php.dev/static-php-cli/gnu-bulk/php-$PHP_VERSION-cli-linux-x86_64.tar.gz"
+          echo "$PHP_SHA256  $RUNNER_TEMP/php.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/php.tar.gz" -C "$RUNNER_TEMP/php" php
+          curl -fsSL -o "$RUNNER_TEMP/php/composer" "$COMPOSER_URL"
+          echo "$COMPOSER_SHA256  $RUNNER_TEMP/php/composer" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/php/composer"
+          printf 'zend.assertions=1\nerror_reporting=-1\nmemory_limit=4G\n' > "$RUNNER_TEMP/php/php.ini"
+          { echo "PHPRC=$RUNNER_TEMP/php"; echo "COMPOSER_HOME=$RUNNER_TEMP/composer"; } >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/php" >> "$GITHUB_PATH"
+      - run: php -r "echo PHP_VERSION, PHP_EOL;"
+      # The package's manifest: valid, its version kept (the Marketplace requires it).
+      - run: composer validate --strict --no-check-version --no-check-lock
+      - name: The pinned SDK (sdk/) is PIN.json's
+        run: php tools/sdk.php check
+      - name: Each dictionary translates the sources' phrases
+        run: php tools/i18n.php check
+      # The coding standard and PHPStan, from tools/dev/composer.lock. Composer downloads the
+      # packages from GitHub's API with the job's token, as setup-php has it do: anonymous, the
+      # runners would share 60 requests an hour.
+      - run: composer install --no-interaction --no-progress --working-dir=tools/dev
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
+      - name: Magento's coding standard, on the repository (errors and warnings)
+        run: tools/dev/vendor/bin/phpcs
+      # Composer installs the embedded libraries' lock with the job's token, as above.
+      - name: The package, checked as the Marketplace's technical review checks it
+        run: php tools/build.php build
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
+      # Each embedded file compared with its original (sdk/, the lock's) token by token: nothing
+      # but the prefix and the patches Adobe's code sniffer needs; the same QR codes drawn.
+      - name: The embedded libraries are the pinned and locked ones
+        run: php tools/embed.php check
+      - name: The package, under the Marketplace's code sniffer (its errors block a submission)
+        run: |
+          mkdir -p "$RUNNER_TEMP/package"
+          # shellcheck disable=SC2016 # PHP's variables, not the shell's.
+          php -r '$z = new ZipArchive(); $z->open($argv[1]) === true && $z->extractTo($argv[2]) || exit(1);' \
+            build/dist/sattleme-module-payment-*.zip "$RUNNER_TEMP/package"
+          tools/dev/vendor/bin/phpcs --standard=Magento2 --extensions=php,phtml --error-severity=10 \
+            --warning-severity=0 --ignore-annotations "$RUNNER_TEMP/package"
+      - name: Magento ${{ env.MAGENTO }}, with the module installed from its package
+        run: sh tools/tests/magento.sh prepare "$MAGENTO" "$RUNNER_TEMP/magento"
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
+      - name: PHPStan, at its strictest, against that Magento
+        run: php tools/dev/vendor/bin/phpstan analyse --memory-limit=4G --no-progress
+        env:
+          SATTLEME_MAGENTO_ROOT: ${{ runner.temp }}/magento
+
+  tests:
+    name: Magento ${{ matrix.magento }}, PHP ${{ matrix.php }}
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # The release lines Adobe supports, at their latest patch, and each PHP version they
+        # support (8.1, which 2.4.7 supports too, is below the SDK's 8.2).
+        include:
+          - magento: 2.4.7-p10
+            php: 8.2.32
+            sha256: 7e476fc089d1951eef66d490324861da2b912ead1928aaab1a7d9f68c4a9ac43
+          - magento: 2.4.8-p5
+            php: 8.3.32
+            sha256: c59def721cd4ac98050793659c663dcc17628c769d9279074f2a32d78ed0a407
+          - magento: 2.4.8-p5
+            php: 8.4.23
+            sha256: bfa838bc924171480fd9b833d9b4241b6fd703a86a30501afa893752c5e79fd9
+          - magento: "2.4.9"
+            php: 8.5.8
+            sha256: 16fa5b113372f730429695fb38f31043d251d2421b556814e94d050bd0e1a354
+    env:
+      PHP_VERSION: ${{ matrix.php }}
+      PHP_SHA256: ${{ matrix.sha256 }}
+      MAGENTO: ${{ matrix.magento }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: PHP ${{ env.PHP_VERSION }} and Composer, their checksums checked
+        run: |
+          mkdir -p "$RUNNER_TEMP/php" "$RUNNER_TEMP/composer"
+          curl -fsSL -o "$RUNNER_TEMP/php.tar.gz" "https://dl.static-php.dev/static-php-cli/gnu-bulk/php-$PHP_VERSION-cli-linux-x86_64.tar.gz"
+          echo "$PHP_SHA256  $RUNNER_TEMP/php.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/php.tar.gz" -C "$RUNNER_TEMP/php" php
+          curl -fsSL -o "$RUNNER_TEMP/php/composer" "$COMPOSER_URL"
+          echo "$COMPOSER_SHA256  $RUNNER_TEMP/php/composer" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/php/composer"
+          printf 'zend.assertions=1\nerror_reporting=-1\nmemory_limit=4G\n' > "$RUNNER_TEMP/php/php.ini"
+          { echo "PHPRC=$RUNNER_TEMP/php"; echo "COMPOSER_HOME=$RUNNER_TEMP/composer"; } >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/php" >> "$GITHUB_PATH"
+      - name: The package
+        run: php tools/build.php build
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
+      # checkout-php at the commit sdk/PIN.json names (tools/tests/sdk.sh checks it), its
+      # development dependencies from its own lock; its whole suite against the copy the package
+      # ships, prefixed and patched. Its time scale as checkout-php's CI sets it on these runners.
+      - name: The SDK's own tests, against the SDK the package ships
+        run: |
+          # shellcheck disable=SC2016 # PHP's variables, not the shell's.
+          commit="$(php -r 'echo json_decode(file_get_contents("sdk/PIN.json"), true)["commit"];')"
+          git init -q "$RUNNER_TEMP/checkout-php"
+          git -C "$RUNNER_TEMP/checkout-php" fetch -q --depth 1 https://github.com/sattleme/checkout-php.git "$commit"
+          git -C "$RUNNER_TEMP/checkout-php" checkout -q FETCH_HEAD
+          composer install --no-interaction --no-progress --working-dir="$RUNNER_TEMP/checkout-php"
+          sh tools/tests/sdk.sh "$RUNNER_TEMP/checkout-php"
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
+          SATTLEME_TEST_TIME_SCALE: "4"
+      - name: Magento ${{ env.MAGENTO }}, with the module installed from its package
+        run: sh tools/tests/magento.sh prepare "$MAGENTO" "$RUNNER_TEMP/magento"
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
+      - name: Unit tests (Magento's framework)
+        run: sh tools/tests/magento.sh unit "$RUNNER_TEMP/magento"
+      - name: Integration tests (Magento's framework, MariaDB 11.4)
+        run: sh tools/tests/magento.sh integration "$RUNNER_TEMP/magento"
+      - name: End-to-end test (Magento in production mode, an order paid through the storefront)
+        run: |
+          db="$(sh tools/tests/mariadb.sh start)"
+          sh tools/tests/mariadb.sh create magento_e2e
+          sh tools/tests/e2e.sh "$RUNNER_TEMP/magento" "$db"
+      - name: Stop MariaDB
+        if: always()
+        run: sh tools/tests/mariadb.sh stop
+
+  e2e-docker:
+    name: End-to-end test in Docker (Magento ${{ matrix.magento }}, PHP ${{ matrix.php }})
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest release line and the newest, each at its latest patch.
+        include:
+          - magento: 2.4.7-p10
+            php: 8.3.32
+            sha256: c59def721cd4ac98050793659c663dcc17628c769d9279074f2a32d78ed0a407
+          - magento: "2.4.9"
+            php: 8.5.8
+            sha256: 16fa5b113372f730429695fb38f31043d251d2421b556814e94d050bd0e1a354
+    env:
+      PHP_VERSION: ${{ matrix.php }}
+      PHP_SHA256: ${{ matrix.sha256 }}
+      MAGENTO: ${{ matrix.magento }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: PHP ${{ env.PHP_VERSION }} and Composer, their checksums checked
+        run: |
+          mkdir -p "$RUNNER_TEMP/php" "$RUNNER_TEMP/composer"
+          curl -fsSL -o "$RUNNER_TEMP/php.tar.gz" "https://dl.static-php.dev/static-php-cli/gnu-bulk/php-$PHP_VERSION-cli-linux-x86_64.tar.gz"
+          echo "$PHP_SHA256  $RUNNER_TEMP/php.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/php.tar.gz" -C "$RUNNER_TEMP/php" php
+          curl -fsSL -o "$RUNNER_TEMP/php/composer" "$COMPOSER_URL"
+          echo "$COMPOSER_SHA256  $RUNNER_TEMP/php/composer" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/php/composer"
+          printf 'zend.assertions=1\nerror_reporting=-1\nmemory_limit=4G\n' > "$RUNNER_TEMP/php/php.ini"
+          { echo "PHPRC=$RUNNER_TEMP/php"; echo "COMPOSER_HOME=$RUNNER_TEMP/composer"; } >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/php" >> "$GITHUB_PATH"
+      - name: The package
+        run: php tools/build.php build
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
+      - name: Magento ${{ env.MAGENTO }}, with the module installed from its package
+        run: sh tools/tests/magento.sh prepare "$MAGENTO" "$RUNNER_TEMP/magento"
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
+      # MariaDB's official image and Ubuntu's, by digest; this PHP binary mounted in the shop's.
+      - name: End-to-end test in Docker containers
+        run: sh tools/tests/e2e-docker.sh "$RUNNER_TEMP/magento" "$RUNNER_TEMP/php/php" "$RUNNER_TEMP/php"

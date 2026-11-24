@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="sattleme_payment">
+        <job name="sattleme_payment_check" instance="Sattleme\Payment\Cron\CheckPayments" method="execute">
+            <schedule>* * * * *</schedule>
+        </job>
+    </group>
+</config>

@@ -1,0 +1,54 @@
+.sattleme-payment {
+    max-width: 32rem;
+    margin: 0 auto 2rem;
+    text-align: center;
+}
+
+.sattleme-payment__amount strong {
+    display: block;
+    font-size: 1.75rem;
+    color: #0b1a33;
+}
+
+.sattleme-payment__btc,
+.sattleme-payment__price {
+    display: block;
+}
+
+.sattleme-payment__qr svg {
+    width: 100%;
+    max-width: 18rem;
+    height: auto;
+}
+
+.sattleme-payment__copy {
+    margin: 1rem 0;
+    text-align: left;
+}
+
+.sattleme-payment__copy label {
+    display: block;
+    font-weight: 600;
+}
+
+.sattleme-payment__copy input {
+    width: 100%;
+    font-family: monospace;
+}
+
+.sattleme-payment__copied {
+    outline: 2px solid #f7931a;
+}
+
+.sattleme-payment__wallet {
+    margin: 1rem 0;
+}
+
+.sattleme-payment__actions form {
+    display: inline-block;
+    margin: 0.25rem;
+}
+
+.sattleme-payment__brand {
+    margin-top: 2rem;
+}

@@ -1,0 +1,9 @@
+<?php
+/**
+ * The payment's information for the customer (their account, emails): the method's title.
+ *
+ * @var \Sattleme\Payment\Block\Info $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+?>
+<?= $escaper->escapeHtml($block->getMethod()->getTitle()) ?>

@@ -1,0 +1,181 @@
+<?php
+/**
+ * The order's payment page: every value escaped, the QR code an SVG made on the server, no inline
+ * script (its script, a file of the module, starts from data-mage-init), forms without
+ * JavaScript.
+ *
+ * @var \Magento\Framework\View\Element\Template $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+
+use Sattleme\Payment\Model\PagePhase;
+
+/** @var \Sattleme\Payment\ViewModel\PaymentPage $page */
+$page = $block->getData('view_model');
+$phase = $page->phase();
+$logo = $block->getViewFileUrl('Sattleme_Payment::images/sattleme-logo.svg');
+?>
+<div class="sattleme-payment" data-phase="<?= $escaper->escapeHtmlAttr($phase) ?>"
+     data-mage-init="<?= $escaper->escapeHtmlAttr($page->scriptConfig()) ?>">
+    <h2 class="sattleme-payment__title">
+        <?= $escaper->escapeHtml(__('Order %1: pay with Bitcoin', $page->orderNumber())) ?>
+    </h2>
+
+    <?php if ($phase === PagePhase::PAYABLE): ?>
+        <?php $qr = $page->qrSvg(); ?>
+        <?php $uri = $page->paymentUri(); ?>
+        <?php if ($page->hasRest()): ?>
+            <p class="message warning"><span>
+                <?= $escaper->escapeHtml(__(
+                    '%1 of %2 sats came. Please pay the rest: %3 sats.',
+                    $page->receivedSats(),
+                    $page->invoiceSats(),
+                    $page->sats()
+                )) ?>
+            </span></p>
+        <?php endif; ?>
+        <div class="sattleme-payment__amount">
+            <strong><?= $escaper->escapeHtml(__('%1 sats', $page->sats())) ?></strong>
+            <span class="sattleme-payment__btc"><?= $escaper->escapeHtml(__('%1 BTC', $page->btc())) ?></span>
+            <?php if ($page->price() !== '' && !$page->hasRest()): ?>
+                <span class="sattleme-payment__price"><?= $escaper->escapeHtml($page->price()) ?></span>
+            <?php endif; ?>
+        </div>
+        <p class="sattleme-payment__time">
+            <?= $escaper->escapeHtml(__('Time left to pay:')) ?>
+            <span class="sattleme-payment__countdown"
+                  data-role="countdown"><?= $escaper->escapeHtml($page->timeLeft()) ?></span>
+        </p>
+        <?php if ($uri !== null): ?>
+            <div class="sattleme-payment__qr">
+                <?php if ($qr !== null): ?>
+                    <?= /* @noEscape */ $qr ?>
+                <?php endif; ?>
+            </div>
+            <p>
+                <a class="action primary sattleme-payment__wallet" href="<?= $escaper->escapeUrl($uri) ?>">
+                    <span><?= $escaper->escapeHtml(__('Open in my wallet')) ?></span>
+                </a>
+            </p>
+        <?php else: ?>
+            <p>
+                <?= $escaper->escapeHtml(
+                    __('The invoice of the rest is being prepared: check again in a moment.')
+                ) ?>
+            </p>
+        <?php endif; ?>
+        <?php $bolt11 = $page->bolt11(); ?>
+        <?php $address = $page->address(); ?>
+        <?php if ($bolt11 !== null): ?>
+            <div class="sattleme-payment__copy">
+                <label for="sattleme-bolt11"><?= $escaper->escapeHtml(__('Lightning invoice')) ?></label>
+                <input id="sattleme-bolt11" type="text" readonly="readonly"
+                       value="<?= $escaper->escapeHtmlAttr($bolt11) ?>">
+                <button type="button" class="action secondary" data-role="copy" data-target="sattleme-bolt11"
+                        hidden="hidden">
+                    <span><?= $escaper->escapeHtml(__('Copy')) ?></span>
+                </button>
+            </div>
+        <?php endif; ?>
+        <?php if ($address !== null): ?>
+            <div class="sattleme-payment__copy">
+                <label for="sattleme-address"><?= $escaper->escapeHtml(__('Bitcoin address (on-chain)')) ?></label>
+                <input id="sattleme-address" type="text" readonly="readonly"
+                       value="<?= $escaper->escapeHtmlAttr($address) ?>">
+                <button type="button" class="action secondary" data-role="copy" data-target="sattleme-address"
+                        hidden="hidden">
+                    <span><?= $escaper->escapeHtml(__('Copy')) ?></span>
+                </button>
+            </div>
+            <p class="sattleme-payment__hint">
+                <?= $escaper->escapeHtml(
+                    __('An on-chain payment is confirmed after 3 confirmations, about 30 minutes.')
+                ) ?>
+            </p>
+        <?php endif; ?>
+    <?php elseif ($phase === PagePhase::CHECKING): ?>
+        <p><?= $escaper->escapeHtml(__('We are checking your payment. This page updates on its own.')) ?></p>
+    <?php elseif ($phase === PagePhase::CONFIRMING): ?>
+        <p class="message notice"><span>
+            <?= $escaper->escapeHtml(__(
+                'Your payment came in time. The Bitcoin network is confirming its on-chain transaction '
+                . '(%1 of 3 confirmations), which takes about 30 minutes. '
+                . 'You can close this page: your order is confirmed by email once it is.',
+                $page->confirmations()
+            )) ?>
+        </span></p>
+    <?php elseif ($phase === PagePhase::PAID): ?>
+        <p class="message success">
+            <span><?= $escaper->escapeHtml(__('Thank you: your payment was received.')) ?></span>
+        </p>
+        <p>
+            <a class="action primary" href="<?= $escaper->escapeUrl($page->continueUrl()) ?>">
+                <span><?= $escaper->escapeHtml(__('Continue')) ?></span>
+            </a>
+        </p>
+    <?php elseif ($phase === PagePhase::EXPIRED): ?>
+        <p class="message notice"><span>
+            <?= $escaper->escapeHtml(__(
+                'The time to pay this order is over, and no payment came: the order was cancelled. '
+                . 'You can place it again, with any payment method.'
+            )) ?>
+        </span></p>
+        <p>
+            <a class="action primary" href="<?= $escaper->escapeUrl($block->getUrl('checkout/cart')) ?>">
+                <span><?= $escaper->escapeHtml(__('Go to my cart')) ?></span>
+            </a>
+        </p>
+    <?php elseif ($phase === PagePhase::UNDERPAID): ?>
+        <p class="message warning"><span>
+            <?= $escaper->escapeHtml(__(
+                'The time to pay is over, and %1 of %2 sats came. The shop will contact you to settle the difference.',
+                $page->receivedSats(),
+                $page->invoiceSats()
+            )) ?>
+        </span></p>
+    <?php elseif ($phase === PagePhase::ABANDONED): ?>
+        <p class="message warning">
+            <span>
+                <?= $escaper->escapeHtml(__('This payment could not be confirmed. Please contact the shop.')) ?>
+            </span>
+        </p>
+    <?php elseif ($phase === PagePhase::FAILED): ?>
+        <p class="message error"><span><?= $escaper->escapeHtml($page->failure()) ?></span></p>
+    <?php elseif ($phase === PagePhase::START): ?>
+        <p><?= $escaper->escapeHtml(__('Your order waits for its payment in bitcoin.')) ?></p>
+    <?php else: ?>
+        <p><?= $escaper->escapeHtml(__('This order cannot be paid with Bitcoin now.')) ?></p>
+    <?php endif; ?>
+
+    <div class="sattleme-payment__actions">
+        <?php if ($page->isChecked()): ?>
+            <form method="post" action="<?= $escaper->escapeUrl($page->url('sattleme/payment/check')) ?>">
+                <?= $block->getBlockHtml('formkey') ?>
+                <button type="submit" class="action secondary">
+                    <span><?= $escaper->escapeHtml(__('Check the payment')) ?></span>
+                </button>
+            </form>
+        <?php endif; ?>
+        <?php if ($page->canCreate()): ?>
+            <form method="post" action="<?= $escaper->escapeUrl($page->url('sattleme/payment/create')) ?>">
+                <?= $block->getBlockHtml('formkey') ?>
+                <button type="submit" class="action primary">
+                    <?php $label = $phase === PagePhase::START ? __('Show my Bitcoin invoice') : __('Try again'); ?>
+                    <span><?= $escaper->escapeHtml($label) ?></span>
+                </button>
+            </form>
+        <?php endif; ?>
+        <?php if ($page->canLeave()): ?>
+            <form method="post" action="<?= $escaper->escapeUrl($page->url('sattleme/payment/leave')) ?>">
+                <?= $block->getBlockHtml('formkey') ?>
+                <button type="submit" class="action secondary">
+                    <span><?= $escaper->escapeHtml(__('Choose another payment method')) ?></span>
+                </button>
+            </form>
+        <?php endif; ?>
+    </div>
+
+    <p class="sattleme-payment__brand">
+        <img src="<?= $escaper->escapeUrl($logo) ?>" alt="sattle.me" width="96" height="17">
+    </p>
+</div>

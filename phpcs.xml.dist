@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<ruleset name="sattleme/module-payment">
+    <description>Magento's coding standard (magento/magento-coding-standard), as Adobe Commerce Marketplace checks a package with it, on the module, its tests and its tools.</description>
+    <file>.</file>
+    <!-- Relative to this directory, matched case-insensitively: the SDK pinned in sdk/ holds its
+         code in sdk/src/, which the module's Sdk/ has not. -->
+    <exclude-pattern type="relative">^build/</exclude-pattern>
+    <exclude-pattern type="relative">^sdk/src/</exclude-pattern>
+    <exclude-pattern type="relative">^tools/dev/vendor/</exclude-pattern>
+    <exclude-pattern type="relative">^vendor/</exclude-pattern>
+    <arg name="extensions" value="php,phtml,xml,js,html,less,css"/>
+    <arg value="sp"/>
+    <rule ref="Magento2"/>
+
+    <!-- Two kinds of lines are longer than 120 characters: the texts of the settings' page, which
+         Magento translates as they are written (a line break would be part of the phrase), and
+         the deepest items of the checkout's layout, nested as Magento's checkout nests them. -->
+    <rule ref="Generic.Files.LineLength">
+        <exclude-pattern>/etc/adminhtml/system.xml</exclude-pattern>
+        <exclude-pattern>/view/frontend/layout/checkout_index_index.xml</exclude-pattern>
+    </rule>
+
+    <!-- The command-line tools (never shipped) print, exit with a status, and run git; the test of
+         two requests at once runs the other one in a process of its own. -->
+    <rule ref="Magento2.Security.LanguageConstruct">
+        <exclude-pattern>/tools/*</exclude-pattern>
+        <exclude-pattern>/Test/Integration/_files/*</exclude-pattern>
+    </rule>
+    <rule ref="Magento2.Security.InsecureFunction">
+        <exclude-pattern>/tools/*</exclude-pattern>
+        <exclude-pattern>/Test/Integration/ConcurrencyTest.php</exclude-pattern>
+    </rule>
+    <rule ref="Magento2.Functions.DiscouragedFunction">
+        <exclude-pattern>/tools/*</exclude-pattern>
+        <exclude-pattern>/Test/*</exclude-pattern>
+    </rule>
+    <rule ref="Magento2.Security.IncludeFile">
+        <exclude-pattern>/tools/*</exclude-pattern>
+        <exclude-pattern>/Test/*</exclude-pattern>
+    </rule>
+    <rule ref="Magento2.Exceptions.TryProcessSystemResources">
+        <exclude-pattern>/tools/*</exclude-pattern>
+        <exclude-pattern>/Test/*</exclude-pattern>
+    </rule>
+    <rule ref="PSR1.Files.SideEffects">
+        <exclude-pattern>/tools/*</exclude-pattern>
+        <exclude-pattern>/Test/Integration/_files/*</exclude-pattern>
+    </rule>
+    <!-- PHPUnit's own static methods (setUpBeforeClass), and the tests' builders of SDK values;
+         the function the embedded libraries call where they used PHP's "@" (no object of theirs
+         to give it to). -->
+    <rule ref="Magento2.Functions.StaticFunction">
+        <exclude-pattern>/Test/*</exclude-pattern>
+        <exclude-pattern>/Embedded/Silence.php</exclude-pattern>
+    </rule>
+</ruleset>

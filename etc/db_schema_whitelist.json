@@ -1,0 +1,44 @@
+{
+    "sattleme_payment_attempt": {
+        "column": {
+            "attempt_id": true,
+            "order_id": true,
+            "store_id": true,
+            "ref": true,
+            "state": true,
+            "invoice": true,
+            "status": true,
+            "expires_at": true,
+            "is_final": true,
+            "outcome": true,
+            "error": true,
+            "errors": true,
+            "created_at": true,
+            "checked_at": true,
+            "checks": true,
+            "next_check_at": true,
+            "lease_until": true,
+            "shredded": true
+        },
+        "index": {
+            "SATTLEME_PAYMENT_ATTEMPT_ORDER_ID": true,
+            "SATTLEME_PAYMENT_ATTEMPT_IS_FINAL_NEXT_CHECK_AT": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "SATTLEME_PAYMENT_ATTEMPT_REF": true,
+            "SATTLEME_PAYMENT_ATTEMPT_ORDER_ID_SALES_ORDER_ENTITY_ID": true
+        }
+    },
+    "sattleme_payment_order": {
+        "column": {
+            "order_id": true,
+            "making_until": true,
+            "canceling_until": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "SATTLEME_PAYMENT_ORDER_ORDER_ID_SALES_ORDER_ENTITY_ID": true
+        }
+    }
+}

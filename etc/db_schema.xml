@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+    <!-- One row per attempt to pay an order with bitcoin. Times are Unix seconds; the invoice and
+         its last status are the SDK's JSON (checkout-spec SPEC.md §3). -->
+    <table name="sattleme_payment_attempt" resource="sales" engine="innodb" comment="sattle.me payment attempts">
+        <column xsi:type="int" name="attempt_id" unsigned="true" nullable="false" identity="true" comment="Attempt ID"/>
+        <column xsi:type="int" name="order_id" unsigned="true" nullable="false" comment="Order ID"/>
+        <column xsi:type="smallint" name="store_id" unsigned="true" nullable="false" default="0" comment="Store ID"/>
+        <column xsi:type="varchar" name="ref" nullable="false" length="64" comment="Reference"/>
+        <column xsi:type="varchar" name="state" nullable="false" length="20" comment="State"/>
+        <column xsi:type="mediumtext" name="invoice" nullable="true" comment="Invoice JSON"/>
+        <column xsi:type="mediumtext" name="status" nullable="true" comment="Last status JSON"/>
+        <column xsi:type="bigint" name="expires_at" unsigned="false" nullable="true" comment="Invoice end"/>
+        <column xsi:type="smallint" name="is_final" unsigned="true" nullable="false" default="0" comment="Is final"/>
+        <column xsi:type="varchar" name="outcome" nullable="false" length="20" default="" comment="Outcome"/>
+        <column xsi:type="varchar" name="error" nullable="false" length="64" default="" comment="Last error code"/>
+        <column xsi:type="int"
+                name="errors"
+                unsigned="true"
+                nullable="false"
+                default="0"
+                comment="Failed checks in a row"/>
+        <column xsi:type="bigint" name="created_at" unsigned="false" nullable="false" comment="Created at"/>
+        <column xsi:type="bigint" name="checked_at" unsigned="false" nullable="true" comment="Last checked at"/>
+        <column xsi:type="int" name="checks" unsigned="true" nullable="false" default="0" comment="Checks"/>
+        <column xsi:type="bigint" name="next_check_at" unsigned="false" nullable="true" comment="Next check at"/>
+        <column xsi:type="bigint" name="lease_until" unsigned="false" nullable="true" comment="Check lease until"/>
+        <column xsi:type="smallint"
+                name="shredded"
+                unsigned="true"
+                nullable="false"
+                default="0"
+                comment="Personal data removed"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="attempt_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="SATTLEME_PAYMENT_ATTEMPT_REF">
+            <column name="ref"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="SATTLEME_PAYMENT_ATTEMPT_ORDER_ID_SALES_ORDER_ENTITY_ID"
+                    table="sattleme_payment_attempt" column="order_id" referenceTable="sales_order"
+                    referenceColumn="entity_id" onDelete="CASCADE"/>
+        <index referenceId="SATTLEME_PAYMENT_ATTEMPT_ORDER_ID" indexType="btree">
+            <column name="order_id"/>
+        </index>
+        <index referenceId="SATTLEME_PAYMENT_ATTEMPT_IS_FINAL_NEXT_CHECK_AT" indexType="btree">
+            <column name="is_final"/>
+            <column name="next_check_at"/>
+        </index>
+    </table>
+    <!-- One row per order paid with bitcoin: what is under way for it (OrderMarks), each until a
+         time by the database's clock, in Unix seconds. -->
+    <table name="sattleme_payment_order" resource="sales" engine="innodb" comment="sattle.me payment orders">
+        <column xsi:type="int" name="order_id" unsigned="true" nullable="false" comment="Order ID"/>
+        <column xsi:type="bigint"
+                name="making_until"
+                unsigned="false"
+                nullable="true"
+                comment="Invoice being made until"/>
+        <column xsi:type="bigint"
+                name="canceling_until"
+                unsigned="false"
+                nullable="true"
+                comment="Cancellation carried out until"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="order_id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="SATTLEME_PAYMENT_ORDER_ORDER_ID_SALES_ORDER_ENTITY_ID"
+                    table="sattleme_payment_order" column="order_id" referenceTable="sales_order"
+                    referenceColumn="entity_id" onDelete="CASCADE"/>
+    </table>
+</schema>

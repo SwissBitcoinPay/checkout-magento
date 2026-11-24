@@ -1,0 +1,133 @@
+<?php
+/**
+ * The payment's information in the admin's order view: each attempt to pay it with bitcoin.
+ *
+ * @var \Sattleme\Payment\Block\Info $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+?>
+<div class="sattleme-payment-info">
+    <strong><?= $escaper->escapeHtml($block->getMethod()->getTitle()) ?></strong>
+    <?php foreach ($block->getAttempts() as $attempt): ?>
+        <?php $fiat = $attempt->fiat(); ?>
+        <?php $rate = $attempt->rate(); ?>
+        <?php $error = $block->explainError($attempt->error); ?>
+        <table class="data-table admin__table-secondary">
+            <tbody>
+            <tr>
+                <th scope="row"><?= $escaper->escapeHtml(__('Reference')) ?></th>
+                <td><?= $escaper->escapeHtml($attempt->ref) ?></td>
+            </tr>
+            <tr>
+                <th scope="row"><?= $escaper->escapeHtml(__('State')) ?></th>
+                <td><?= $escaper->escapeHtml($block->describeState($attempt)) ?></td>
+            </tr>
+            <?php if ($attempt->hasInvoice()): ?>
+                <tr>
+                    <th scope="row"><?= $escaper->escapeHtml(__('Amount')) ?></th>
+                    <td>
+                        <?= $escaper->escapeHtml(__('%1 sats', $block->formatSats($attempt->sats()))) ?>
+                        <?php if ($fiat !== null): ?>
+                            (<?= $escaper->escapeHtml($fiat['amount'] . ' ' . $fiat['currency']) ?>)
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php if ($rate !== null): ?>
+                    <tr>
+                        <th scope="row"><?= $escaper->escapeHtml(__('Exchange rate')) ?></th>
+                        <?php $rateText = __(
+                            '1 BTC = %1 %2 (%3)',
+                            $rate['price'],
+                            $rate['currency'],
+                            $rate['source']
+                        ); ?>
+                        <td><?= $escaper->escapeHtml($rateText) ?></td>
+                    </tr>
+                <?php endif; ?>
+                <?php $address = $attempt->onchainAddress(); ?>
+                <?php if ($attempt->hasReceived()): ?>
+                    <tr>
+                        <th scope="row"><?= $escaper->escapeHtml(__('Received')) ?></th>
+                        <td>
+                            <?= $escaper->escapeHtml(__('%1 sats', $block->formatSats($attempt->received()))) ?>
+                            <?php if ($attempt->txids() === [] && $address !== null
+                                && $address !== \Sattleme\Payment\Model\Shredder::SHREDDED
+                            ): ?>
+                                (<a href="<?= $escaper->escapeUrl($block->addressUrl($address)) ?>"
+                                    target="_blank" rel="noopener noreferrer"><?=
+                                    $escaper->escapeHtml(__('its transactions, at the address'))
+                                    ?></a>)
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endif; ?>
+                <tr>
+                    <th scope="row"><?= $escaper->escapeHtml(__('Payable until')) ?></th>
+                    <td><?= $escaper->escapeHtml($block->formatUnixTime($attempt->expiresAt)) ?></td>
+                </tr>
+                <?php if ($attempt->paymentHash() !== null): ?>
+                    <tr>
+                        <th scope="row"><?= $escaper->escapeHtml(__('Payment hash')) ?></th>
+                        <td><code><?= $escaper->escapeHtml($attempt->paymentHash()) ?></code></td>
+                    </tr>
+                <?php endif; ?>
+                <?php if ($address !== null): ?>
+                    <tr>
+                        <th scope="row"><?= $escaper->escapeHtml(__('Address')) ?></th>
+                        <td>
+                            <?php if ($address === \Sattleme\Payment\Model\Shredder::SHREDDED): ?>
+                                <?= $escaper->escapeHtml(__('Removed (personal data)')) ?>
+                            <?php else: ?>
+                                <a href="<?= $escaper->escapeUrl($block->addressUrl($address)) ?>"
+                                   target="_blank" rel="noopener noreferrer"><code><?=
+                                    $escaper->escapeHtml($address)
+                                    ?></code></a>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endif; ?>
+                <?php foreach ($attempt->txids() as $txid): ?>
+                    <tr>
+                        <th scope="row"><?= $escaper->escapeHtml(__('Transaction')) ?></th>
+                        <td>
+                            <a href="<?= $escaper->escapeUrl($block->transactionUrl($txid)) ?>"
+                               target="_blank" rel="noopener noreferrer"><code><?=
+                                $escaper->escapeHtml($txid)
+                                ?></code></a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php foreach ($attempt->preimages() as $preimage): ?>
+                    <?php $proved = $block->paymentHashOf($preimage); ?>
+                    <tr>
+                        <th scope="row"><?= $escaper->escapeHtml(__('Proof of payment (preimage)')) ?></th>
+                        <td>
+                            <code><?= $escaper->escapeHtml($preimage) ?></code>
+                            <?php if ($proved !== null): ?>
+                                <br><?= $escaper->escapeHtml(__('of the payment hash')) ?>
+                                <code><?= $escaper->escapeHtml($proved) ?></code>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            <tr>
+                <th scope="row"><?= $escaper->escapeHtml(__('Last check')) ?></th>
+                <td><?= $escaper->escapeHtml($block->formatUnixTime($attempt->checkedAt)) ?></td>
+            </tr>
+            <?php if (!$attempt->isFinal && $attempt->nextCheckAt !== null): ?>
+                <tr>
+                    <th scope="row"><?= $escaper->escapeHtml(__('Next check')) ?></th>
+                    <td><?= $escaper->escapeHtml($block->formatUnixTime($attempt->nextCheckAt)) ?></td>
+                </tr>
+            <?php endif; ?>
+            <?php if ($error !== null): ?>
+                <tr>
+                    <th scope="row"><?= $escaper->escapeHtml(__('Error')) ?></th>
+                    <td><?= $escaper->escapeHtml($error) ?></td>
+                </tr>
+            <?php endif; ?>
+            </tbody>
+        </table>
+    <?php endforeach; ?>
+</div>

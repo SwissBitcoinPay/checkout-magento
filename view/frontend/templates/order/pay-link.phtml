@@ -1,0 +1,20 @@
+<?php
+/**
+ * Where the order's bitcoin payment is, and the link of its payment page when there is one to
+ * follow.
+ *
+ * @var \Sattleme\Payment\Block\Order\PayLink $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+$notice = $block->getNotice();
+?>
+<?php if ($notice !== null): ?>
+    <div class="message <?= $escaper->escapeHtmlAttr($notice['kind']) ?> sattleme-pay-link">
+        <span><?= $escaper->escapeHtml($notice['message']) ?></span>
+        <?php if ($notice['url'] !== null && $notice['label'] !== null): ?>
+            <a class="action primary" href="<?= $escaper->escapeUrl($notice['url']) ?>">
+                <span><?= $escaper->escapeHtml($notice['label']) ?></span>
+            </a>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>

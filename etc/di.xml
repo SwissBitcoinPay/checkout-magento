@@ -1,0 +1,156 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- The payment method's facade: Magento's payment gateway adapter, configured. -->
+    <virtualType name="SattlemePaymentFacade" type="Magento\Payment\Model\Method\Adapter">
+        <arguments>
+            <argument name="code" xsi:type="const">Sattleme\Payment\Model\Config::CODE</argument>
+            <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
+            <argument name="infoBlockType" xsi:type="string">Sattleme\Payment\Block\Info</argument>
+            <argument name="valueHandlerPool" xsi:type="object">SattlemePaymentValueHandlerPool</argument>
+            <argument name="validatorPool" xsi:type="object">SattlemePaymentValidatorPool</argument>
+            <argument name="commandPool" xsi:type="object">SattlemePaymentCommandPool</argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="SattlemePaymentGatewayConfig" type="Magento\Payment\Gateway\Config\Config">
+        <arguments>
+            <argument name="methodCode" xsi:type="const">Sattleme\Payment\Model\Config::CODE</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="SattlemePaymentConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
+        <arguments>
+            <argument name="configInterface" xsi:type="object">SattlemePaymentGatewayConfig</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="SattlemePaymentValueHandlerPool" type="Magento\Payment\Gateway\Config\ValueHandlerPool">
+        <arguments>
+            <argument name="handlers" xsi:type="array">
+                <item name="default" xsi:type="string">SattlemePaymentConfigValueHandler</item>
+                <item name="title" xsi:type="string">Sattleme\Payment\Gateway\Config\TitleHandler</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="SattlemePaymentCountryValidator" type="Magento\Payment\Gateway\Validator\CountryValidator">
+        <arguments>
+            <argument name="config" xsi:type="object">SattlemePaymentGatewayConfig</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="SattlemePaymentValidatorPool" type="Magento\Payment\Gateway\Validator\ValidatorPool">
+        <arguments>
+            <argument name="validators" xsi:type="array">
+                <item name="country" xsi:type="string">SattlemePaymentCountryValidator</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="SattlemePaymentCommandPool" type="Magento\Payment\Gateway\Command\CommandPool">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="initialize" xsi:type="string">Sattleme\Payment\Gateway\Command\InitializeCommand</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <!-- The module's log: var/log/sattleme_payment.log, in place of system.log (the handlers'
+         array is merged with Magento's logger's: "system" is replaced, debug and syslog are kept,
+         as the shop configures them). Never given a secret. -->
+    <virtualType name="SattlemePaymentLogHandler" type="Magento\Framework\Logger\Handler\Base">
+        <arguments>
+            <argument name="fileName" xsi:type="string">/var/log/sattleme_payment.log</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="SattlemePaymentLogger" type="Magento\Framework\Logger\Monolog">
+        <arguments>
+            <argument name="name" xsi:type="string">sattleme_payment</argument>
+            <argument name="handlers" xsi:type="array">
+                <item name="system" xsi:type="object">SattlemePaymentLogHandler</item>
+            </argument>
+        </arguments>
+    </virtualType>
+    <type name="Sattleme\Payment\Sdk\SdkClientProvider">
+        <arguments>
+            <argument name="logger" xsi:type="object">SattlemePaymentLogger</argument>
+        </arguments>
+    </type>
+    <type name="Sattleme\Payment\Model\Availability">
+        <arguments>
+            <argument name="logger" xsi:type="object">SattlemePaymentLogger</argument>
+        </arguments>
+    </type>
+    <type name="Sattleme\Payment\Model\Checker">
+        <arguments>
+            <argument name="logger" xsi:type="object">SattlemePaymentLogger</argument>
+        </arguments>
+    </type>
+    <type name="Sattleme\Payment\Model\Settlement">
+        <arguments>
+            <argument name="logger" xsi:type="object">SattlemePaymentLogger</argument>
+        </arguments>
+    </type>
+    <type name="Sattleme\Payment\Model\InvoiceCreator">
+        <arguments>
+            <argument name="logger" xsi:type="object">SattlemePaymentLogger</argument>
+        </arguments>
+    </type>
+    <type name="Sattleme\Payment\Model\KeyVerifier">
+        <arguments>
+            <argument name="logger" xsi:type="object">SattlemePaymentLogger</argument>
+        </arguments>
+    </type>
+    <type name="Sattleme\Payment\Model\Background">
+        <arguments>
+            <argument name="logger" xsi:type="object">SattlemePaymentLogger</argument>
+        </arguments>
+    </type>
+    <type name="Sattleme\Payment\Model\GiveUp">
+        <arguments>
+            <argument name="logger" xsi:type="object">SattlemePaymentLogger</argument>
+        </arguments>
+    </type>
+    <type name="Sattleme\Payment\Model\Page\Progress">
+        <arguments>
+            <argument name="logger" xsi:type="object">SattlemePaymentLogger</argument>
+        </arguments>
+    </type>
+
+    <preference for="Sattleme\Payment\Sdk\ClientProviderInterface" type="Sattleme\Payment\Sdk\SdkClientProvider"/>
+    <preference for="Sattleme\Payment\Model\ClockInterface" type="Sattleme\Payment\Model\SystemClock"/>
+
+    <!-- One lock and one page's order per process. -->
+    <type name="Sattleme\Payment\Model\OrderLock" shared="true"/>
+    <type name="Sattleme\Payment\Model\Page\CurrentOrder" shared="true"/>
+
+    <!-- The order is kept from being cancelled while its invoice may be paid or confirmed, and,
+         but by the admin, once bitcoin came for it; by the customer as well (Magento's order
+         cancellation, which never asks Order::canCancel()). -->
+    <type name="Magento\Sales\Model\Order">
+        <plugin name="sattleme_payment_cancel_guard" type="Sattleme\Payment\Plugin\OrderCancelGuard"/>
+    </type>
+    <type name="Magento\Sales\Api\OrderManagementInterface">
+        <plugin name="sattleme_payment_order_management_cancel_guard"
+                type="Sattleme\Payment\Plugin\OrderManagementCancelGuard"/>
+    </type>
+    <type name="Magento\OrderCancellation\Model\CustomerCanCancel">
+        <plugin name="sattleme_payment_customer_cancel_guard" type="Sattleme\Payment\Plugin\CustomerCancelGuard"/>
+    </type>
+
+    <!-- The key is sensitive: app:config:dump writes it to env.php, never to config.php. -->
+    <type name="Magento\Config\Model\Config\TypePool">
+        <arguments>
+            <argument name="sensitive" xsi:type="array">
+                <item name="payment/sattleme/integration_key" xsi:type="string">1</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="sattleme_payment_privacy"
+                      xsi:type="object">Sattleme\Payment\Console\Command\PrivacyCommand</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

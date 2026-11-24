@@ -1,0 +1,31 @@
+{
+    "name": "sattleme/module-payment-libraries",
+    "description": "The libraries the module's package embeds, prefixed with Sattleme\\Payment\\Vendor (tools/embed.php): the SDK pinned in sdk/, the QR code encoder and its one dependency. Never installed as such.",
+    "type": "project",
+    "license": "MIT",
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../sdk",
+            "options": {
+                "symlink": false,
+                "versions": {
+                    "sattleme/checkout": "1.0.0"
+                }
+            }
+        }
+    ],
+    "require": {
+        "php": "~8.2.0||~8.3.0||~8.4.0||~8.5.0",
+        "bacon/bacon-qr-code": "3.1.1",
+        "dasprid/enum": "1.0.7",
+        "sattleme/checkout": "1.0.0"
+    },
+    "config": {
+        "allow-plugins": false,
+        "platform": {
+            "php": "8.2.0"
+        },
+        "sort-packages": true
+    }
+}

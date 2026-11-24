@@ -1,0 +1,135 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <section id="payment">
+            <group id="sattleme"
+                   translate="label comment"
+                   type="text"
+                   sortOrder="100"
+                   showInDefault="1"
+                   showInWebsite="1"
+                   showInStore="1">
+                <label>Bitcoin (sattle.me)</label>
+                <comment>Bitcoin payments, in Lightning or on-chain, paid straight to your sattle.me wallet. There is no test mode: payments are real bitcoin payments.</comment>
+                <field id="active"
+                       translate="label"
+                       type="select"
+                       sortOrder="10"
+                       showInDefault="1"
+                       showInWebsite="1"
+                       canRestore="1">
+                    <label>Enabled</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <config_path>payment/sattleme/active</config_path>
+                </field>
+                <field id="integration_key"
+                       translate="label comment"
+                       type="obscure"
+                       sortOrder="20"
+                       showInDefault="1"
+                       showInWebsite="1">
+                    <label>Integration key</label>
+                    <comment>The secret key of the integration made for this shop in the sattle.me app (sattleme_ck_…). It is checked when you save it, and never shown again.</comment>
+                    <backend_model>Sattleme\Payment\Model\Config\Backend\IntegrationKey</backend_model>
+                    <config_path>payment/sattleme/integration_key</config_path>
+                </field>
+                <field id="merchant" translate="label" type="label" sortOrder="25" showInDefault="1" showInWebsite="1">
+                    <label>Connected to</label>
+                    <frontend_model>Sattleme\Payment\Block\Adminhtml\Merchant</frontend_model>
+                    <config_path>payment/sattleme/merchant</config_path>
+                </field>
+                <field id="minutes"
+                       translate="label comment"
+                       type="text"
+                       sortOrder="30"
+                       showInDefault="1"
+                       showInWebsite="1"
+                       canRestore="1">
+                    <label>Time to pay (minutes)</label>
+                    <comment>How long the customer has to pay an invoice, 1 to 60 minutes; never past the moment Magento cancels an order left unpaid (Stores → Configuration → Sales → Sales → Orders Cron Settings → Pending Payment Order Lifetime).</comment>
+                    <validate>required-entry validate-digits validate-digits-range digits-range-1-60</validate>
+                    <backend_model>Sattleme\Payment\Model\Config\Backend\Minutes</backend_model>
+                    <config_path>payment/sattleme/minutes</config_path>
+                </field>
+                <field id="title"
+                       translate="label comment"
+                       type="text"
+                       sortOrder="40"
+                       showInDefault="1"
+                       showInWebsite="1"
+                       showInStore="1">
+                    <label>Title</label>
+                    <comment>What the customer reads at checkout. Empty: "Bitcoin", in the store's language.</comment>
+                    <config_path>payment/sattleme/title</config_path>
+                </field>
+                <field id="description"
+                       translate="label comment"
+                       type="textarea"
+                       sortOrder="50"
+                       showInDefault="1"
+                       showInWebsite="1"
+                       showInStore="1">
+                    <label>Description</label>
+                    <comment>Shown at checkout under the title. Empty: how a bitcoin payment goes, in the store's language.</comment>
+                    <config_path>payment/sattleme/description</config_path>
+                </field>
+                <field id="allowspecific"
+                       translate="label"
+                       type="allowspecific"
+                       sortOrder="60"
+                       showInDefault="1"
+                       showInWebsite="1"
+                       canRestore="1">
+                    <label>Payment from Applicable Countries</label>
+                    <source_model>Magento\Payment\Model\Config\Source\Allspecificcountries</source_model>
+                    <config_path>payment/sattleme/allowspecific</config_path>
+                </field>
+                <field id="specificcountry"
+                       translate="label"
+                       type="multiselect"
+                       sortOrder="70"
+                       showInDefault="1"
+                       showInWebsite="1">
+                    <label>Payment from Specific Countries</label>
+                    <source_model>Magento\Directory\Model\Config\Source\Country</source_model>
+                    <can_be_empty>1</can_be_empty>
+                    <depends>
+                        <field id="allowspecific">1</field>
+                    </depends>
+                    <config_path>payment/sattleme/specificcountry</config_path>
+                </field>
+                <field id="min_order_total"
+                       translate="label"
+                       type="text"
+                       sortOrder="80"
+                       showInDefault="1"
+                       showInWebsite="1">
+                    <label>Minimum Order Total</label>
+                    <validate>validate-zero-or-greater</validate>
+                    <config_path>payment/sattleme/min_order_total</config_path>
+                </field>
+                <field id="max_order_total"
+                       translate="label"
+                       type="text"
+                       sortOrder="90"
+                       showInDefault="1"
+                       showInWebsite="1">
+                    <label>Maximum Order Total</label>
+                    <validate>validate-zero-or-greater</validate>
+                    <config_path>payment/sattleme/max_order_total</config_path>
+                </field>
+                <field id="sort_order"
+                       translate="label"
+                       type="text"
+                       sortOrder="100"
+                       showInDefault="1"
+                       showInWebsite="1">
+                    <label>Sort Order</label>
+                    <validate>validate-number</validate>
+                    <config_path>payment/sattleme/sort_order</config_path>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

@@ -1,0 +1,4 @@
+# Outputs of the tools: the archive, the analyses' caches, the tests' downloads and servers.
+/build/
+# The development tools, installed from tools/dev/composer.lock.
+/tools/dev/vendor/

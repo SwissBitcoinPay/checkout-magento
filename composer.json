@@ -1,0 +1,59 @@
+{
+    "name": "sattleme/module-payment",
+    "description": "sattle.me for Magento Open Source and Adobe Commerce: bitcoin payments, in Lightning or on-chain, paid straight to the merchant's sattle.me wallet.",
+    "type": "magento2-module",
+    "version": "1.0.0",
+    "license": "MIT",
+    "keywords": [
+        "bitcoin",
+        "lightning",
+        "magento",
+        "magento2",
+        "payment",
+        "sattleme"
+    ],
+    "homepage": "https://github.com/sattleme/checkout-magento",
+    "authors": [
+        {
+            "name": "sattle.me",
+            "homepage": "https://sattle.me"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/sattleme/checkout-magento/issues",
+        "source": "https://github.com/sattleme/checkout-magento",
+        "security": "https://github.com/sattleme/checkout-magento/security/policy"
+    },
+    "require": {
+        "php": "~8.2.0||~8.3.0||~8.4.0||~8.5.0",
+        "ext-bcmath": "*",
+        "ext-hash": "*",
+        "ext-iconv": "*",
+        "ext-intl": "*",
+        "ext-json": "*",
+        "ext-openssl": "*",
+        "ext-pcre": "*",
+        "magento/framework": "~103.0.7",
+        "magento/module-backend": "~102.0.7",
+        "magento/module-checkout": "~100.4.7",
+        "magento/module-config": "~101.2.7",
+        "magento/module-cron": "~100.4.7",
+        "magento/module-customer": "~103.0.7",
+        "magento/module-directory": "~100.4.7",
+        "magento/module-payment": "~100.4.7",
+        "magento/module-quote": "~101.2.7",
+        "magento/module-sales": "~103.0.7",
+        "magento/module-store": "~101.1.7"
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "Sattleme\\Payment\\": "",
+            "Sattleme\\Payment\\Vendor\\BaconQrCode\\": "vendor/bacon/bacon-qr-code/src/",
+            "Sattleme\\Payment\\Vendor\\DASPRiD\\Enum\\": "vendor/dasprid/enum/src/",
+            "Sattleme\\Payment\\Vendor\\Sattleme\\Checkout\\": "vendor/sattleme/checkout/src/"
+        }
+    }
+}

@@ -1,0 +1,50 @@
+# PHPStan at its strictest level, with its strict rules and Magento's extension (factories,
+# proxies, data objects' magic methods), against the Magento that SATTLEME_MAGENTO_ROOT names
+# (tools/tests/magento.sh): Magento's own classes, never stubs of them.
+includes:
+    - tools/dev/vendor/phpstan/phpstan-strict-rules/rules.neon
+    - tools/dev/vendor/bitexpert/phpstan-magento/extension.neon
+parameters:
+    level: max
+    phpVersion: 80200
+    magento:
+        magentoRoot: %env.SATTLEME_MAGENTO_ROOT%
+    bootstrapFiles:
+        - tools/phpstan/bootstrap.php
+    paths:
+        - registration.php
+        - Block
+        - Console
+        - Controller
+        - Cron
+        - Embedded
+        - Gateway
+        - Model
+        - Observer
+        - Plugin
+        - Sdk
+        - ViewModel
+        - view
+        - Test
+        - tools/build.php
+        - tools/embed.php
+        - tools/i18n.php
+        - tools/sdk.php
+        - tools/tests/e2e.php
+        - tools/tests/phpunit.php
+    # Magento's test frameworks (the tests' base classes), which its autoloader does not name; the
+    # locked QR code library unprefixed, as tools/embed.php installs it (build/embed/vendor) to
+    # compare the embedded one with it.
+    scanDirectories:
+        - %env.SATTLEME_MAGENTO_ROOT%/dev/tests/integration/framework/Magento/TestFramework
+        - build/embed/vendor/bacon/bacon-qr-code/src
+        - build/embed/vendor/dasprid/enum/src
+    fileExtensions:
+        - php
+        - phtml
+    tmpDir: build/phpstan
+    ignoreErrors:
+        # PHPUnit's assertions are static methods that its tests call as $this->assert…().
+        -
+            identifier: staticMethod.dynamicCall
+            path: Test/*

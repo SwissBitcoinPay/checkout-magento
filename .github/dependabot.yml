@@ -1,0 +1,43 @@
+# Pull requests that keep the actions, the libraries the package embeds (tools/embed/composer.lock:
+# the QR code encoder and its one dependency) and the development tools (tools/dev/composer.lock:
+# the coding standard, PHPStan) up to date. The SDK is the copy pinned in sdk/, taken by
+# tools/sdk.php, never by Dependabot. Each waits a week after a release (cooldown): time for a
+# compromised release to be found and pulled before it reaches this repository.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: composer
+    directory: /tools/embed
+    schedule:
+      interval: weekly
+    # Exact versions stay exact.
+    versioning-strategy: increase
+    cooldown:
+      default-days: 7
+    ignore:
+      # sdk/, a path repository: imported from the SDK's repository (tools/sdk.php import).
+      - dependency-name: sattleme/checkout
+    groups:
+      embedded:
+        patterns: ["*"]
+
+  - package-ecosystem: composer
+    directory: /tools/dev
+    schedule:
+      interval: weekly
+    # Exact versions stay exact.
+    versioning-strategy: increase
+    cooldown:
+      default-days: 7
+    groups:
+      development:
+        patterns: ["*"]
