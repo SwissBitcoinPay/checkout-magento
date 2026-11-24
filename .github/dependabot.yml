@@ -2,7 +2,9 @@
 # the QR code encoder and its one dependency) and the development tools (tools/dev/composer.lock:
 # the coding standard, PHPStan) up to date. The SDK is the copy pinned in sdk/, taken by
 # tools/sdk.php, never by Dependabot. Each waits a week after a release (cooldown): time for a
-# compromised release to be found and pulled before it reaches this repository.
+# compromised release to be found and pulled before it reaches this repository. A pull request of
+# the embedded libraries fails the CI until a maintainer runs `php tools/embed.php vendor` on its
+# branch and commits vendor/: the code the package ships is then in the pull request's diff.
 version: 2
 updates:
   - package-ecosystem: github-actions

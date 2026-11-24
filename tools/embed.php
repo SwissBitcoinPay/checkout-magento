@@ -12,6 +12,12 @@
  *       prefixes it into build/embed/scoped (tools/embed/scoper.inc.php, PHP-Scoper's PHAR,
  *       downloaded once into build/tools/ and checked against its SHA-256), then writes
  *       build/embed/package/vendor/, patched as below. tools/build.php runs it for the package.
+ *   php tools/embed.php vendor
+ *       Builds them as above, checks the build as below, then writes it into the repository's
+ *       vendor/, in place of what it held: the copy git tracks, which the package Composer installs
+ *       from Packagist (the tag's git archive) holds. Run it after a change of
+ *       tools/embed/composer.lock or of sdk/, and commit vendor/: tools/build.php fails while
+ *       vendor/ is not the build.
  *   php tools/embed.php check
  *       Whether that build is the locked libraries: each of their files compared with the
  *       original (sdk/ for the SDK, the lock's for the others) token by token, nothing changed but
@@ -187,6 +193,30 @@ class Embedded
         $this->checkNothingRefersToWhatIsLeftOut($build . '/package/vendor');
 
         return [$build . '/package', $counts];
+    }
+
+    /**
+     * Writes the libraries of a build into the repository's vendor/, in place of what it held.
+     *
+     * The build is build()'s directory, whose vendor/ is written; vendor/ is the copy git tracks,
+     * which the package Composer installs from Packagist holds. How many files it wrote.
+     *
+     * @param string $build The build's directory (build()'s first value).
+     * @return int
+     */
+    public function writeVendor(string $build): int
+    {
+        $files = $this->filesUnder($build . '/vendor');
+        if ($files === []) {
+            throw new \RuntimeException("{$build}/vendor holds no library");
+        }
+        $vendor = $this->root . '/vendor';
+        $this->remove($vendor);
+        foreach ($files as $file) {
+            $this->write($vendor . '/' . $file, $this->read($build . '/vendor/' . $file));
+        }
+
+        return count($files);
     }
 
     /**
@@ -1212,6 +1242,20 @@ if (PHP_SAPI === 'cli' && isset($argv[0]) && realpath($argv[0]) === __FILE__) {
             echo "The embedded libraries are in {$dir}/vendor (patches: " . implode(', ', $made) . ")\n";
             exit(0);
         }
+        if ($command === 'vendor' && count($argv) === 2) {
+            [$dir] = $embedded->build();
+            // Never a build the check refuses into the copy git tracks.
+            $problems = $embedded->problems();
+            foreach ($problems as $problem) {
+                fwrite(STDERR, $problem . "\n");
+            }
+            if ($problems !== []) {
+                exit(1);
+            }
+            $written = $embedded->writeVendor($dir);
+            echo "vendor/ holds the embedded libraries, checked: {$written} files (commit vendor/)\n";
+            exit(0);
+        }
         if ($command === 'check' && count($argv) === 2) {
             $counts = [];
             $problems = $embedded->problems($counts);
@@ -1231,6 +1275,6 @@ if (PHP_SAPI === 'cli' && isset($argv[0]) && realpath($argv[0]) === __FILE__) {
         fwrite(STDERR, $e->getMessage() . "\n");
         exit(1);
     }
-    fwrite(STDERR, "Usage: php tools/embed.php build | check\n");
+    fwrite(STDERR, "Usage: php tools/embed.php build | vendor | check\n");
     exit(2);
 }

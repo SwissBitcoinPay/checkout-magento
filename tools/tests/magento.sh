@@ -2,9 +2,10 @@
 # shellcheck disable=SC2016 # The PHP of `php -r '…'`: its variables are PHP's, not the shell's.
 # A Magento Open Source to test the module in, without Docker nor root: Magento's own repository
 # at a release's tag, its Composer lock installed, and the module installed in it as a shop
-# installs it from the Marketplace: from its archive (build/dist, tools/build.php), with Composer.
-# The archive holds the libraries the module embeds (the SDK, the QR code encoder), prefixed: the
-# tests run on them, as Adobe gets them.
+# installs it from Packagist: from its archive (build/dist, tools/build.php: the files of the
+# commit's git archive, which Packagist distributes), with Composer. The archive holds the
+# libraries the module embeds (the SDK, the QR code encoder), prefixed: the tests run on them, as
+# shops get them.
 #
 #   sh tools/tests/magento.sh prepare <magento tag> <dir>
 #       Clones Magento at <tag> into <dir> (shallow; a clone already there is kept), installs its
@@ -26,7 +27,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 COMMAND="${1:-}"
 DIR="${3:-${2:-}}"
 if [ -z "$COMMAND" ] || [ -z "$DIR" ]; then
-  sed -n '3,22p' "$0" >&2
+  sed -n '3,23p' "$0" >&2
   exit 2
 fi
 
@@ -44,7 +45,7 @@ prepare)
     git clone -q --depth 1 --branch "$TAG" -c advice.detachedHead=false https://github.com/magento/magento2.git "$DIR"
   fi
   cd "$DIR"
-  # The module from its archive, as Composer installs a package of the Marketplace.
+  # The module from its archive, as Composer installs the package Packagist distributes.
   composer config repositories.sattleme-module artifact "$ROOT/build/dist"
   php -r '
     $file = $argv[1];
@@ -97,7 +98,7 @@ integration)
   php -d memory_limit=-1 ../../../vendor/bin/phpunit -c phpunit-sattleme.xml
   ;;
 *)
-  sed -n '3,22p' "$0" >&2
+  sed -n '3,23p' "$0" >&2
   exit 2
   ;;
 esac

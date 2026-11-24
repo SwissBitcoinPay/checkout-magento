@@ -1,12 +1,13 @@
 name: CI
 
 # Every pull request and every push to main (and the release workflow, before it builds): the
-# pinned SDK, the translations, Magento's coding standard on the repository, the package Adobe
-# Commerce Marketplace takes built (with the libraries it embeds, prefixed, from
-# tools/embed/composer.lock) and checked as its review checks it, and PHPStan against Magento's own
-# sources, on one job; then, for each Magento release line the module supports and each PHP
-# version they support, in a Magento installed from its repository's tag with the module installed
-# from that package: the unit tests, the integration tests (Magento's frameworks), and the
+# pinned SDK, the translations, Magento's coding standard on the repository, the package built
+# (with the libraries it embeds, prefixed, from tools/embed/composer.lock: the copy vendor/ tracks)
+# and checked as Adobe Commerce Marketplace's review checks one, the same files as the commit's git
+# archive (what Composer installs from Packagist), and PHPStan against Magento's own sources, on
+# one job; then, for each Magento release line the module supports and each PHP version they
+# support, in a Magento installed from its repository's tag with the module installed from that
+# package: the unit tests, the integration tests (Magento's frameworks), and the
 # end-to-end test (Magento installed, compiled, in production mode, its storefront's pages still
 # cacheable, a customer's order paid through the storefront, the SDK faked by a test-only module),
 # all of them on the embedded libraries. The tests never reach the network: the SDK is faked. And,
@@ -65,7 +66,8 @@ jobs:
           { echo "PHPRC=$RUNNER_TEMP/php"; echo "COMPOSER_HOME=$RUNNER_TEMP/composer"; } >> "$GITHUB_ENV"
           echo "$RUNNER_TEMP/php" >> "$GITHUB_PATH"
       - run: php -r "echo PHP_VERSION, PHP_EOL;"
-      # The package's manifest: valid, its version kept (the Marketplace requires it).
+      # The package's manifest: valid, its version kept (release.yml checks that a tag is of it,
+      # and Packagist takes a tag only if it matches).
       - run: composer validate --strict --no-check-version --no-check-lock
       - name: The pinned SDK (sdk/) is PIN.json's
         run: php tools/sdk.php check
@@ -80,7 +82,8 @@ jobs:
       - name: Magento's coding standard, on the repository (errors and warnings)
         run: tools/dev/vendor/bin/phpcs
       # Composer installs the embedded libraries' lock with the job's token, as above.
-      - name: The package, checked as the Marketplace's technical review checks it
+      # It fails unless the vendor/ git tracks is the build of the embedded libraries.
+      - name: The package, checked as the Marketplace's technical review checks one
         run: php tools/build.php build
         env:
           COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ github.token }}"}}'
@@ -88,7 +91,7 @@ jobs:
       # but the prefix and the patches Adobe's code sniffer needs; the same QR codes drawn.
       - name: The embedded libraries are the pinned and locked ones
         run: php tools/embed.php check
-      - name: The package, under the Marketplace's code sniffer (its errors block a submission)
+      - name: The package, under the Marketplace's code sniffer (a bar the package keeps meeting)
         run: |
           mkdir -p "$RUNNER_TEMP/package"
           # shellcheck disable=SC2016 # PHP's variables, not the shell's.
@@ -96,6 +99,16 @@ jobs:
             build/dist/sattleme-module-payment-*.zip "$RUNNER_TEMP/package"
           tools/dev/vendor/bin/phpcs --standard=Magento2 --extensions=php,phtml --error-severity=10 \
             --warning-severity=0 --ignore-annotations "$RUNNER_TEMP/package"
+      # Packagist distributes the tag's git archive (GitHub's zipball, which .gitattributes trims):
+      # the package the tests install must hold exactly its files, byte for byte.
+      - name: The package is the commit's git archive, as Composer installs it from Packagist
+        run: |
+          mkdir -p "$RUNNER_TEMP/archive"
+          git archive --format=tar HEAD | tar -x -C "$RUNNER_TEMP/archive"
+          if ! diff -r "$RUNNER_TEMP/archive" "$RUNNER_TEMP/package"; then
+            echo "::error::The package is not the commit's git archive (.gitattributes, tools/build.php)"
+            exit 1
+          fi
       - name: Magento ${{ env.MAGENTO }}, with the module installed from its package
         run: sh tools/tests/magento.sh prepare "$MAGENTO" "$RUNNER_TEMP/magento"
         env:

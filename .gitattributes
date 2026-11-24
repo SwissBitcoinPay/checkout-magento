@@ -1,0 +1,13 @@
+# What Packagist distributes is a tag's git archive (GitHub's zipball of it), which Composer
+# installs: the module's files and, in vendor/, the libraries it embeds (tools/embed.php vendor).
+# The repository's tests, tools, pinned SDK and CI stay out of it, as they stay out of the package
+# tools/build.php builds; the CI checks that the two hold the same files, byte for byte.
+# GitHub's archives match these paths case-sensitively: /sdk is the pinned SDK, never Sdk/.
+/.gitattributes export-ignore
+/.github export-ignore
+/.gitignore export-ignore
+/Test export-ignore
+/phpcs.xml.dist export-ignore
+/phpstan.neon.dist export-ignore
+/sdk export-ignore
+/tools export-ignore
