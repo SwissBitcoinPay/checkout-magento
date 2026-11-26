@@ -6,8 +6,8 @@
     "require": {
         "php": "~8.2.0||~8.3.0||~8.4.0||~8.5.0",
         "bitexpert/phpstan-magento": "0.44.0",
-        "magento/magento-coding-standard": "41",
-        "phpstan/phpstan": "2.3.6",
+        "magento/magento-coding-standard": "42",
+        "phpstan/phpstan": "2.3.7",
         "phpstan/phpstan-strict-rules": "2.1.1"
     },
     "config": {
