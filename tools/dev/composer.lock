@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "268606608ed7c99c36ed71dde84c1c71",
+    "content-hash": "1b5deeaece0e1913f8f507912875b5ce",
     "packages": [
         {
             "name": "bitexpert/phpstan-magento",
@@ -236,16 +236,16 @@
         },
         {
             "name": "magento/magento-coding-standard",
-            "version": "41",
+            "version": "42",
             "source": {
                 "type": "git",
                 "url": "https://github.com/magento/magento-coding-standard.git",
-                "reference": "e4af7c6c79d0bfa89deb06cba1a3d49405635afc"
+                "reference": "6dfbeb6f1e3401329af2fc9b34448df38a124e58"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/magento/magento-coding-standard/zipball/e4af7c6c79d0bfa89deb06cba1a3d49405635afc",
-                "reference": "e4af7c6c79d0bfa89deb06cba1a3d49405635afc",
+                "url": "https://api.github.com/repos/magento/magento-coding-standard/zipball/6dfbeb6f1e3401329af2fc9b34448df38a124e58",
+                "reference": "6dfbeb6f1e3401329af2fc9b34448df38a124e58",
                 "shasum": ""
             },
             "require": {
@@ -253,10 +253,10 @@
                 "ext-simplexml": "*",
                 "magento/php-compatibility-fork": "^0.1",
                 "php": "~8.1.0 || ~8.2.0 || ~8.3.0 || ~8.4.0 || ~8.5.0",
-                "phpcsstandards/phpcsutils": "^1.2.2",
+                "phpcsstandards/phpcsutils": "^1.2.3",
                 "rector/rector": "^1.2.4 || ^2.0.0",
-                "squizlabs/php_codesniffer": "^3.10.2",
-                "webonyx/graphql-php": "^15.0"
+                "squizlabs/php_codesniffer": "^3.13.6",
+                "webonyx/graphql-php": "^15.33"
             },
             "require-dev": {
                 "phpunit/phpunit": "^9.6.20",
@@ -280,9 +280,9 @@
             "description": "A set of Magento specific PHP CodeSniffer rules.",
             "support": {
                 "issues": "https://github.com/magento/magento-coding-standard/issues",
-                "source": "https://github.com/magento/magento-coding-standard/tree/v41"
+                "source": "https://github.com/magento/magento-coding-standard/tree/v42"
             },
-            "time": "2026-08-18T06:05:59+00:00"
+            "time": "2026-11-18T06:36:09+00:00"
         },
         {
             "name": "magento/php-compatibility-fork",
@@ -448,11 +448,11 @@
         },
         {
             "name": "phpstan/phpstan",
-            "version": "2.3.6",
+            "version": "2.3.7",
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/00cedebb76cc82c1592414fa4f616cefdccda16f",
-                "reference": "00cedebb76cc82c1592414fa4f616cefdccda16f",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/90c91c2498849ab8cc4e873864bbf1cb2bf6ea12",
+                "reference": "90c91c2498849ab8cc4e873864bbf1cb2bf6ea12",
                 "shasum": ""
             },
             "require": {
@@ -508,7 +508,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-11-15T19:58:26+00:00"
+            "time": "2026-11-19T10:31:11+00:00"
         },
         {
             "name": "phpstan/phpstan-strict-rules",
@@ -564,16 +564,16 @@
         },
         {
             "name": "rector/rector",
-            "version": "2.8.5",
+            "version": "2.9.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/rectorphp/rector.git",
-                "reference": "bf2982e3e2b8dfbcb43e5589fa301431cb1e479e"
+                "reference": "8a06053cae42915224f9357566162ccb1076001a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/rectorphp/rector/zipball/bf2982e3e2b8dfbcb43e5589fa301431cb1e479e",
-                "reference": "bf2982e3e2b8dfbcb43e5589fa301431cb1e479e",
+                "url": "https://api.github.com/repos/rectorphp/rector/zipball/8a06053cae42915224f9357566162ccb1076001a",
+                "reference": "8a06053cae42915224f9357566162ccb1076001a",
                 "shasum": ""
             },
             "require": {
@@ -609,7 +609,7 @@
             ],
             "support": {
                 "issues": "https://github.com/rectorphp/rector/issues",
-                "source": "https://github.com/rectorphp/rector/tree/2.8.5"
+                "source": "https://github.com/rectorphp/rector/tree/2.9.2"
             },
             "funding": [
                 {
@@ -617,7 +617,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-11-14T23:24:35+00:00"
+            "time": "2026-11-24T23:34:02+00:00"
         },
         {
             "name": "squizlabs/php_codesniffer",
